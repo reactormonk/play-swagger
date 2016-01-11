@@ -34,9 +34,43 @@ class ScalaGenerator(val strictModel: StrictModel) extends PlayScalaControllerAn
     playScalaControllers(fileName, currentController)
   )
 
-  def generateModel(fileName: String) =
+  def fieldsFromMap(a: Any): Seq[TemplateFieldData] = a match {
+    case s: Seq[Map[String @unchecked, String @unchecked] @unchecked] =>
+      s map { m => TemplateFieldData(m("name").toString, m("type_name").toString) }
+    case other => throw new IllegalStateException("Expected Seq but was " + other)
+  }
+
+  def generateModel(fileName: String) = {
+    val packages = TemplatePackageData(fileName.split('.').init.mkString("."), fileName.split('.').last)
+
+    val bindings            = ReShaper.filterByType("bindings", denotationTable)
+    val bindingsByType      = ReShaper.groupByType(bindings.toSeq).flatMap(_._2) map {
+      case m: Map[String @unchecked, Any @unchecked] => TemplateBindingData(m("name").toString, m("format").asInstanceOf[Option[String]].getOrElse(""))
+      case other => throw new IllegalStateException("Unrecognized binding")
+    }
+
+    val classes = ReShaper.filterByType("classes", denotationTable) map { m =>
+      TemplateClassData(m("name").toString, fieldsFromMap(m("fields")), m("trait").asInstanceOf[Option[Map[String, String]]].map(_("name")))
+    }
+    val aliases = ReShaper.filterByType("aliases", denotationTable) map { m =>
+      val tpe = m("underlying_type") match {
+        case s: String => Some(s)
+        case o: Option[String @unchecked] => o
+      }
+      TemplateAliasData(m("name").toString, m("alias").toString, tpe)
+    }
+    val traits = ReShaper.filterByType("traits", denotationTable) map { m =>
+      TemplateTraitData(m("name").toString, fieldsFromMap(m("fields")))
+    }
+    val ast = shadowAst("")
+    val imports = ast("imports").asInstanceOf[Seq[Map[String, String]]] map {_("name")}
+    val bindingImports = ast("binding_imports").asInstanceOf[Seq[Map[String, String]]] map {_("name")}
+
+    val data = TemplateModelData(packages, imports, bindingImports, aliases, traits, classes, bindingsByType)
+    lazy val fullTemplate: String = _root_.txt.model.apply(data).body
     if (modelTypes.values.forall(_.isInstanceOf[PrimitiveType])) ""
-    else apply(fileName, modelTemplateName)
+    else fullTemplate
+  }
 
   def generateGenerators(fileName: String) =
     if (modelTypes.isEmpty) ""
@@ -71,39 +105,44 @@ class ScalaGenerator(val strictModel: StrictModel) extends PlayScalaControllerAn
   private def nonEmptyTemplate(map: Map[String, Any], templateName: String, currentController: String): String = {
     val engine = new TemplateEngine
 
-    val validations         = ReShaper.filterByType("validators", denotationTable)
-    val validationsByType   = ReShaper.groupByType(validations.toSeq).toMap
-
-    val bindings            = ReShaper.filterByType("bindings", denotationTable)
-    val bindingsByType      = ReShaper.groupByType(bindings.toSeq).toMap
-
-    val (unmanagedParts: Map[ApiCall, UnmanagedPart], unmanagedImports: Seq[String]) =
-      analyzeController(currentController, denotationTable)
-
-    val controllersMap = Map(
-      "controllers"         -> controllers(modelCalls, unmanagedParts)(denotationTable),
-      "controller_imports"  -> controllerImports.map(i => Map("name" -> i)),
-      "unmanaged_imports"   -> unmanagedImports.map(i => Map("name" -> i))
-    )
-
-    val singlePackage = Map(
-      "classes"             -> ReShaper.filterByType("classes", denotationTable),
-      "aliases"             -> ReShaper.filterByType("aliases", denotationTable),
-      "traits"              -> ReShaper.filterByType("traits", denotationTable),
-      "test_data_classes"   -> ReShaper.filterByType("test_data_classes", denotationTable),
-      "test_data_aliases"   -> ReShaper.filterByType("test_data_aliases", denotationTable),
-      "tests"               -> ReShaper.filterByType("tests", denotationTable),
-      "bindings"            -> bindingsByType
-    )
-
-    val rawAllPackages      = singlePackage ++ validationsByType ++ controllersMap
-    val allPackages         = enrichWithStructuralInfo(rawAllPackages)
+    val allPackages: Map[String, Any] = shadowAst(currentController)
 
     val template            = getClass.getClassLoader.getResource(templateName)
     val templateSource      = TemplateSource.fromURL(template)
     val output              = engine.layout(templateSource, map ++ allPackages)
 
     output.replaceAll("\u2B90", "\n")
+  }
+
+  def shadowAst(currentController: String): Map[String, Any] = {
+    val validations = ReShaper.filterByType("validators", denotationTable)
+    val validationsByType = ReShaper.groupByType(validations.toSeq).toMap
+
+    val bindings = ReShaper.filterByType("bindings", denotationTable)
+    val bindingsByType = ReShaper.groupByType(bindings.toSeq).toMap
+
+    val (unmanagedParts: Map[ApiCall, UnmanagedPart], unmanagedImports: Seq[String]) =
+      analyzeController(currentController, denotationTable)
+
+    val controllersMap = Map(
+      "controllers" -> controllers(modelCalls, unmanagedParts)(denotationTable),
+      "controller_imports" -> controllerImports.map(i => Map("name" -> i)),
+      "unmanaged_imports" -> unmanagedImports.map(i => Map("name" -> i))
+    )
+
+    val singlePackage = Map(
+      "classes" -> ReShaper.filterByType("classes", denotationTable),
+      "aliases" -> ReShaper.filterByType("aliases", denotationTable),
+      "traits" -> ReShaper.filterByType("traits", denotationTable),
+      "test_data_classes" -> ReShaper.filterByType("test_data_classes", denotationTable),
+      "test_data_aliases" -> ReShaper.filterByType("test_data_aliases", denotationTable),
+      "tests" -> ReShaper.filterByType("tests", denotationTable),
+      "bindings" -> bindingsByType
+    )
+
+    val rawAllPackages = singlePackage ++ validationsByType ++ controllersMap
+    val allPackages = enrichWithStructuralInfo(rawAllPackages)
+    allPackages
   }
 
   def enrichWithStructuralInfo(rawAllPackages: Map[String, Iterable[Any]]): Map[String, Any] = {

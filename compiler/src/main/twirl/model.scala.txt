@@ -1,0 +1,32 @@
+@(model: de.zalando.apifirst.generators.TemplateModelData)
+
+package @{model.packages.mainPackagePrefix}
+package object @{model.packages.mainPackageSuffix} {
+
+@for(i <- model.imports) {
+  import @i
+}
+@for(i <- model.bindingImports) {
+  import @i
+}
+@for(alias <- model.aliases) {
+  type @alias.name = @alias.alias@alias.underlyingTypeStr
+}
+@for(trt <- model.traits) {
+  trait I@{trt.name} {
+    @for(field <- trt.fields) {
+      def @{field.name}: @{field.typeName}
+    }
+  }
+}
+@for(clazz <- model.classes) {
+    case class @{clazz.name}(@for((field, idx) <- clazz.fields.zipWithIndex){@field.name: @{field.typeName}@{if(idx != clazz.fields.size -1)", "else""}}) @{clazz.extending.fold("")("extends I" + _)}
+}
+
+@* seems like the package object is the only way to dynamically bring *@
+@* marshalling infrastructure into the scope of play routes *@
+
+@for(binding <- model.bindings) {
+    @{binding.name}@{binding.format}
+}
+}
