@@ -1886,6 +1886,217 @@ object Data {
           }
         }
       ]
+    }
+  },
+  "content": [
+    {
+      "element": "httpTransaction",
+      "content": [
+        {
+          "element": "httpRequest",
+          "attributes": {
+            "method": "PUT",
+            "title": "",
+            "headers": {
+              "element": "httpHeaders",
+              "content": [
+                {
+                  "element": "member",
+                  "content": {
+                    "key": {
+                      "element": "string",
+                      "content": "Content-Type"
+                    },
+                    "value": {
+                      "element": "string",
+                      "content": "application/json"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "content": [
+            {
+              "element": "dataStructure",
+              "content": [
+                {
+                  "element": "object",
+                  "content": [
+                    {
+                      "element": "member",
+                      "attributes": {
+                        "typeAttributes": [
+                          "required"
+                        ]
+                      },
+                      "content": {
+                        "key": {
+                          "element": "string",
+                          "content": "configSelection"
+                        },
+                        "value": {
+                          "element": "object",
+                          "content": [
+                            {
+                              "element": "member",
+                              "meta": {
+                                "description": "Unique ID"
+                              },
+                              "attributes": {
+                                "typeAttributes": [
+                                  "optional"
+                                ]
+                              },
+                              "content": {
+                                "key": {
+                                  "element": "string",
+                                  "content": "activeDataVersion"
+                                },
+                                "value": {
+                                  "element": "string",
+                                  "content": "unique-id"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "element": "asset",
+              "meta": {
+                "classes": [
+                  "messageBody"
+                ]
+              },
+              "attributes": {
+                "contentType": "application/json"
+              },
+              "content": ""
+            }
+          ]
+        },
+        {
+          "element": "httpResponse",
+          "attributes": {
+            "statusCode": "203",
+            "headers": {
+              "element": "httpHeaders",
+              "content": [
+                {
+                  "element": "member",
+                  "content": {
+                    "key": {
+                      "element": "string",
+                      "content": "Content-Type"
+                    },
+                    "value": {
+                      "element": "string",
+                      "content": "application/json"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "content": [
+            {
+              "element": "dataStructure",
+              "content": [
+                {
+                  "element": "object",
+                  "content": [
+                    {
+                      "element": "member",
+                      "attributes": {
+                        "typeAttributes": [
+                          "required"
+                        ]
+                      },
+                      "content": {
+                        "key": {
+                          "element": "string",
+                          "content": "configSelection"
+                        },
+                        "value": {
+                          "element": "Config Selection"
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "element": "asset",
+              "meta": {
+                "classes": [
+                  "messageBody"
+                ]
+              },
+              "attributes": {
+                "contentType": "application/json"
+              },
+              "content": ""
+            },
+            {
+              "element": "asset",
+              "meta": {
+                "classes": [
+                  "messageBodySchema"
+                ]
+              },
+              "attributes": {
+                "contentType": "application/json"
+              },
+              "content": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+"""
+
+  val putTransition2 = """
+{
+  "element": "transition",
+  "meta": {
+    "title": "Save a Config Selection"
+  },
+  "attributes": {
+    "href": "/config-selections/{selection}",
+    "hrefVariables": {
+      "element": "hrefVariables",
+      "content": [
+        {
+          "element": "member",
+          "meta": {
+            "description": "Selection ID"
+          },
+          "attributes": {
+            "typeAttributes": [
+              "required"
+            ]
+          },
+          "content": {
+            "key": {
+              "element": "string",
+              "content": "selection"
+            },
+            "value": {
+              "element": "string",
+              "content": ""
+            }
+          }
+        }
+      ]
     },
     "data": {
       "element": "dataStructure",

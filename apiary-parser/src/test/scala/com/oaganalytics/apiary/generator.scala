@@ -75,15 +75,19 @@ class GeneratorTest extends FunSpec with MustMatchers {
     })
   }
   it("should add the post body from TransitionAttributes") {
+    val resultKeys =
+      List(
+        List("paths", "config-selections", "{selection}", "putbody", "selection"),
+        List("paths", "config-selections", "{selection}", "putbody", "requestBody"),
+        List("paths", "config-selections", "{selection}", "putbody", "203", "responseBody")
+      )
     json[Transition](putTransition, { transition =>
       val keys = Generator.transform(transition, naming.Reference(List("test")), "test", "testController").parameters.keys.toList
-      keys.map(_.name.parts) mustBe(
-        List(
-          List("paths", "config-selections", "{selection}", "putbody", "selection"),
-          List("paths", "config-selections", "{selection}", "putbody", "requestBody"),
-          List("paths", "config-selections", "{selection}", "putbody", "203", "responseBody")
-        )
-      )
+      keys.map(_.name.parts) mustBe(resultKeys)
+    })
+    json[Transition](putTransition2, { transition =>
+      val keys = Generator.transform(transition, naming.Reference(List("test")), "test", "testController").parameters.keys.toList
+      keys.map(_.name.parts) mustBe(resultKeys)
     })
   }
 }

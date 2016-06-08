@@ -13,7 +13,12 @@ case class Href(path: naming.Reference, query: Set[String]) {
   def compile(vars: List[(ParameterRef, Type)]): ParameterLookupTable = {
     vars.map({ case (ref, typ) =>
       val name = ref.name.parts.last
-      val place = if (query(name)) { ParameterPlace.QUERY } else { ParameterPlace.PATH }
+      val place =
+        name match {
+          case Generator.requestBodyName => ParameterPlace.BODY
+          case a if query(a) => ParameterPlace.QUERY
+          case _ => ParameterPlace.PATH
+        }
       ref -> Parameter(
         name = name,
         typeName = typ,
@@ -60,6 +65,7 @@ object Generator {
   val pureObjectName = naming.Reference(List("definitions", "pureJSObject"))
   val pureObjectDef = ResourceTranslation(List(), Map(), Map(pureObjectName -> CatchAll(Str(None, None), emptyMeta)))
   val pureObject = TypeRef(pureObjectName)
+  val requestBodyName = "requestBody"
   val escapees = List(
     " " -> "",
     "&" -> "_ampersand_",
@@ -173,7 +179,7 @@ object Generator {
 
   def transform(transitionAttributes: TransitionAttributes, ref: naming.Reference): List[(ParameterRef, Type)] = {
     (transitionAttributes.hrefVariables.map({ h => transform(h, ref)}) ++
-      transitionAttributes.data.map({ d => List(ParameterRef(ref / "requestBody") -> transform(d, ref))})).toList.flatten
+      transitionAttributes.data.map({ d => List(ParameterRef(ref / requestBodyName) -> transform(d, ref / requestBodyName))})).toList.flatten
   }
 
   def transform(transition: Transition, defaultPath: naming.Reference, packageName: String, controller: String):
@@ -190,7 +196,7 @@ object Generator {
     val pathParameters: ParameterLookupTable = href.map(_.compile(vars)).getOrElse(Map())
     val responseRef = ParameterRef(resp.ref)
     val respParameter = Map(responseRef -> resp.parameter)
-    val reqParameter = req.parameter.map(p => Map(ParameterRef(name) -> p)).getOrElse(Map())
+    val reqParameter = req.parameter.map(p => Map(ParameterRef(name / requestBodyName) -> p)).getOrElse(Map())
     val handler = HandlerCall(
       packageName = packageName,
       controller = controller,
